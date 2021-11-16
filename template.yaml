@@ -54,7 +54,7 @@ Resources:
           - sg-012d9f06f33426bd3
         SubnetIds:
           - subnet-04acf9f2eb1e3a6e0
-          - subnet-0abbbb58fb610ab92
+          #- subnet-0abbbb58fb610ab92
           - subnet-02f4e9ff8dd406e80
 
   SflIngestionLayer:

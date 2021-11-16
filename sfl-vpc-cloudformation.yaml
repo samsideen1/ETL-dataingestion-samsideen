@@ -20,7 +20,7 @@ Parameters:
     Type: String
     Default: 10.192.0.0/24
 
-  PrivateSubnet2CIDR:
+  PublicSubnet2CIDR:
     Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
     Type: String
     Default: 10.192.20.0/24
@@ -58,6 +58,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+          
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -69,16 +70,16 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
 
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Ref AvailabilityZone2
-      CidrBlock: !Ref PrivateSubnet2CIDR
-      MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+  # PublicSubnet2:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     AvailabilityZone: !Ref AvailabilityZone2
+  #     CidrBlock: !Ref PublicSubnet2CIDR
+  #     MapPublicIpOnLaunch: false
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
   
   myDBSubnetGroup: 
         Type: "AWS::RDS::DBSubnetGroup"
@@ -86,7 +87,7 @@ Resources:
           DBSubnetGroupDescription: description
           SubnetIds: 
             - !Ref PrivateSubnet1
-            - !Ref PrivateSubnet2
+#          - !Ref PrivateSubnet2
   
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable

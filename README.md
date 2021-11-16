@@ -9,6 +9,9 @@
 - sfl-vpc-cloudformation.yaml
 - This stack would deploy the vpc and the postgres RDS
 
+# Create a secret manager to manage all database secrets
+- name it secret
+
 # Now use AWS serverless application model(sam) to deploy the lambda cloudformation stack
 - template.yaml
 - All modules have been installed in the python folder called packages
@@ -40,4 +43,4 @@
    - let suffixes be '.csv'
    - then click add
 
-# To test test the lambda, drop DATA.csv into the aqua-datasetset bucket under 'raw-input' folder then go to the database table created to see the file content ingested
+# To test test the lambda, drop DATA.csv into the s3bucket under 'raw-input' folder then go to the database table created to see the file content ingested

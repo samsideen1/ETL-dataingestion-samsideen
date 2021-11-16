@@ -4,13 +4,15 @@ import boto3
 from io import BytesIO, StringIO
 import os, json
 import sys
+import time
 
 csv_buffer = StringIO()
 s3_client = boto3.client('s3')
 s3_resource = boto3.resource('s3')
-table_name='cleandata'
+table_name='data_table'
 port=5432
 
+#Defined a function to store database secrets in secret manager
 def get_secret():
     sm_client = boto3.client('secretsmanager', region_name=os.getenv('region'))
     sm_data = sm_client.get_secret_value(SecretId=os.getenv('secrets'))
@@ -20,8 +22,10 @@ def get_secret():
     db=secret_data.get('database')
     user_nm=secret_data.get('username')
     passw=secret_data.get('password')
+    #print (secret_)
     return secret_data
 
+#Defined a a function to connect to database
 def create_db_conn(secret):
     '''
     Create RDS Database Connection
@@ -41,55 +45,67 @@ def create_db_conn(secret):
         print(e)
         print('Cannot Connect to DB')
     
-create_db_conn()
+#create_db_conn()
 
+#Using lambda boto3 client, created a lambda function to injest data in s3
 def lambda_handler(event, context):
-    s3= event['Records'][0]['s3']
-    bucket_name = s3['bucket']['name']
-    file_name = s3['object']['key']
-    obj = s3_client.get_object(Bucket=bucket_name, Key = file_name)
-    context=''
+    obj = s3_client.get_object(Bucket='sfl-s3', Key = 'raw-input/DATA.csv')
+    #clean_up(obj)
+    
     def clean_up(obj):
         df = pd.read_csv(obj['Body'])
         print('Dataframe Size is ', len(df))
-
+        print(df.head(10))
+    
         #Rename the columns
-        df.columns=['ID','FIRTS_NAME','LAST_NAME','EMAIL', 'GENDER', 'IP_ADDRESS']
-        def remove_comma(strg):
-            clean_str=strg.replace(',','')
-            return clean_str
-
-        #drop all invalid and incomplete rows 
-        df.dropna(inplace=True)
-        
+        df.columns=['ID','FIRST_NAME','LAST_NAME','EMAIL', 'GENDER', 'IP_ADDRESS']
     
-        #extract & drop  all duplicate values 
-        df.loc[df.duplicated(), :]
-        df.duplicated()
-        df.drop_duplicates()
-
         #Adds 2 colums together to creat an extra column
-        df['full_name'] = df['first_name'] + ' ' + df['last_name']
+        df['FULL_NAME'] = df['FIRST_NAME'] + ' ' + df['LAST_NAME']
         print(df)
-
-        secret=get_secret()
+        
+        #extract & drop  all duplicate values 
+        print('dataframe size before drop duplicate:', len(df))
+        df=df.drop_duplicates(subset=['EMAIL'])
+        print('dataframe size after drop duplicate:', len(df))
+        
+        # function for vlookup Order Priority_key
+        def Gender(x):
+            if x == 'Agender':
+                return 'A'
+            elif x =='Bigender':
+                return 'B'
+            elif x == 'Female':
+                return 'F'
+            elif x == 'Genderfluid':
+                return 'GF'
+            elif x == 'Genderqueer':
+                return 'GQ'
+            elif x == 'Male':
+                return 'M'
+            elif x == 'Non-binary':
+                return 'GQ'
+        
+        df['GENDER_KEY'] = df['GENDER'].apply(lambda x: Gender(x))
     
-    
-        conn=create_db_conn(secret)
-        cursor=conn.cursor()
-
         #write dataframe to temporary directory as csv
-        temp_dir='/tmp/DataClean.csv'
+        temp_dir='/tmp/dataclean.csv'
         df.to_csv(temp_dir, index=False, header=False)
 
         #load the DF into rds
-        #insertquery = "select * from mobile"
         f = open(temp_dir, 'r')
-        connection = create_db_conn()
+        secret=get_secret()
+        print('secret: ', secret)
+        
+        connection = create_db_conn(secret)
         cursor=connection.cursor()
+        time.sleep(4)
+        #print(testing)
         try:
             cursor.copy_from(f, table_name, sep=",")
             connection.commit()
+            print ('ingestion sucessful')
+            
         except (Exception, psycopg2.DatabaseError) as error:
             os.remove(temp_dir)
             print("Error: %s" % error)
@@ -100,7 +116,6 @@ def lambda_handler(event, context):
         cursor.close()
         f.close()
         os.remove(temp_dir)
-
+        
+    
     clean_up(obj)
-# # context=''
-# # lambda_handler(event, context)
